@@ -12,12 +12,50 @@ const GithubIcon = () => (
 
 export function ContactSection() {
   const { t } = useLanguage();
-  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [customError, setCustomError] = useState<string>('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setStatus('success');
-    setTimeout(() => setStatus('idle'), 3000);
+    setStatus('loading');
+    setCustomError('');
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
+    const accessKey = import.meta.env.VITE_WEB3FORMS_ACCESS_KEY;
+    if (!accessKey) {
+      setStatus('error');
+      setCustomError('Web3Forms Access Key is missing. Please set VITE_WEB3FORMS_ACCESS_KEY in environment variables.');
+      return;
+    }
+
+    formData.append('access_key', accessKey);
+    formData.append('subject', 'New Contact Message from Portfolio');
+    formData.append('from_name', 'Portfolio Website');
+
+    try {
+      const response = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setStatus('success');
+        form.reset();
+        setTimeout(() => setStatus('idle'), 6000);
+      } else {
+        setStatus('error');
+        if (data.message) {
+          setCustomError(data.message);
+        }
+        setTimeout(() => setStatus('idle'), 6000);
+      }
+    } catch {
+      setStatus('error');
+      setTimeout(() => setStatus('idle'), 6000);
+    }
   };
 
   return (
@@ -70,7 +108,7 @@ export function ContactSection() {
                   </div>
                 </a>
 
-                <a href="[INSERT GITHUB URL]" target="_blank" rel="noreferrer" className="flex items-center gap-4 group mt-6">
+                <a href="https://github.com/pattilwanida-oss" target="_blank" rel="noreferrer" className="flex items-center gap-4 group mt-6">
                   <div className="p-3 bg-brown border-2 border-brown rounded-2xl group-hover:bg-red transition-colors flex items-center justify-center text-blue">
                     <GithubIcon />
                   </div>
@@ -95,13 +133,18 @@ export function ContactSection() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+                {/* Honeypot Spam Protection */}
+                <input type="checkbox" name="botcheck" className="hidden" style={{ display: 'none' }} />
+
                 <div className="space-y-2">
                   <label htmlFor="name" className="text-xs font-bold text-brown uppercase tracking-widest">{t('contact.form.name')}</label>
                   <input 
                     type="text" 
                     id="name"
+                    name="name"
                     required
-                    className="w-full bg-cream border-2 border-brown rounded-2xl px-4 py-3 text-brown font-medium focus:outline-none focus:border-blue transition-colors shadow-[4px_4px_0px_rgba(98,63,27,1)] focus:shadow-[4px_4px_0px_rgba(50,36,112,1)]"
+                    disabled={status === 'loading'}
+                    className="w-full bg-cream border-2 border-brown rounded-2xl px-4 py-3 text-brown font-medium focus:outline-none focus:border-blue transition-colors shadow-[4px_4px_0px_rgba(98,63,27,1)] focus:shadow-[4px_4px_0px_rgba(50,36,112,1)] disabled:opacity-60"
                     placeholder={t('contact.form.name.ph')}
                   />
                 </div>
@@ -111,8 +154,10 @@ export function ContactSection() {
                   <input 
                     type="email" 
                     id="email"
+                    name="email"
                     required
-                    className="w-full bg-cream border-2 border-brown rounded-2xl px-4 py-3 text-brown font-medium focus:outline-none focus:border-blue transition-colors shadow-[4px_4px_0px_rgba(98,63,27,1)] focus:shadow-[4px_4px_0px_rgba(50,36,112,1)]"
+                    disabled={status === 'loading'}
+                    className="w-full bg-cream border-2 border-brown rounded-2xl px-4 py-3 text-brown font-medium focus:outline-none focus:border-blue transition-colors shadow-[4px_4px_0px_rgba(98,63,27,1)] focus:shadow-[4px_4px_0px_rgba(50,36,112,1)] disabled:opacity-60"
                     placeholder={t('contact.form.email.ph')}
                   />
                 </div>
@@ -121,18 +166,34 @@ export function ContactSection() {
                   <label htmlFor="message" className="text-xs font-bold text-brown uppercase tracking-widest">{t('contact.form.msg')}</label>
                   <textarea 
                     id="message"
+                    name="message"
                     required
                     rows={4}
-                    className="w-full bg-cream border-2 border-brown rounded-2xl px-4 py-3 text-brown font-medium focus:outline-none focus:border-blue transition-colors shadow-[4px_4px_0px_rgba(98,63,27,1)] focus:shadow-[4px_4px_0px_rgba(50,36,112,1)] resize-none"
+                    disabled={status === 'loading'}
+                    className="w-full bg-cream border-2 border-brown rounded-2xl px-4 py-3 text-brown font-medium focus:outline-none focus:border-blue transition-colors shadow-[4px_4px_0px_rgba(98,63,27,1)] focus:shadow-[4px_4px_0px_rgba(50,36,112,1)] resize-none disabled:opacity-60"
                     placeholder={t('contact.form.msg.ph')}
                   ></textarea>
                 </div>
 
                 <button 
                   type="submit"
-                  className="w-full py-4 bg-red text-cream font-black uppercase border-2 border-brown hover:bg-blue transition-colors shadow-[4px_4px_0px_rgba(98,63,27,1)] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] flex items-center justify-center gap-2 mt-4"
+                  disabled={status === 'loading'}
+                  className="w-full py-4 bg-red text-cream font-black uppercase border-2 border-brown hover:bg-blue transition-colors shadow-[4px_4px_0px_rgba(98,63,27,1)] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] flex items-center justify-center gap-2 mt-4 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <Send className="w-5 h-5" /> {t('contact.form.send')}
+                  {status === 'loading' ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 text-cream" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>{t('contact.form.sending')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5" />
+                      <span>{t('contact.form.send')}</span>
+                    </>
+                  )}
                 </button>
 
                 {status === 'success' && (
@@ -142,7 +203,7 @@ export function ContactSection() {
                 )}
                 {status === 'error' && (
                   <div className="p-4 bg-cream border-2 border-brown text-red font-bold text-sm text-center shadow-[4px_4px_0px_rgba(187,36,10,1)] mt-4">
-                    {t('contact.msg.error')}
+                    {customError || t('contact.msg.error')}
                   </div>
                 )}
               </form>
@@ -162,7 +223,7 @@ export function ContactSection() {
           <div className="flex justify-center gap-8">
             <a href="mailto:pattilwanida@gmail.com" className="text-blue hover:text-red font-bold transition-colors uppercase text-sm tracking-widest">{t('contact.email')}</a>
             <a href="tel:0841576307" className="text-blue hover:text-red font-bold transition-colors uppercase text-sm tracking-widest">{t('contact.phone')}</a>
-            <a href="[INSERT GITHUB URL]" className="text-blue hover:text-red font-bold transition-colors uppercase text-sm tracking-widest">{t('contact.github')}</a>
+            <a href="https://github.com/pattilwanida-oss" target="_blank" rel="noreferrer" className="text-blue hover:text-red font-bold transition-colors uppercase text-sm tracking-widest">{t('contact.github')}</a>
           </div>
         </div>
       </footer>
